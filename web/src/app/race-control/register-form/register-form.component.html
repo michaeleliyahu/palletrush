@@ -1,0 +1,15 @@
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <p>
+    <select formControlName="driverId" [appAutofocus]="heatId()">
+      <option [ngValue]="null">Pick a driver</option>
+      @for (team of teams(); track team.id) {
+        <optgroup [label]="team.name">
+          @for (driver of team.drivers; track driver.id) {
+            <option [ngValue]="driver.id">{{ driver.name }}</option>
+          }
+        </optgroup>
+      }
+    </select>
+    <button type="submit" [disabled]="form.invalid">Register</button>
+  </p>
+</form>

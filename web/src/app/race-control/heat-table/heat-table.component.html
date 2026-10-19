@@ -1,0 +1,20 @@
+<table>
+  <thead>
+    <tr>
+      <th>Heat</th>
+      <th>Starts</th>
+      <th>Registered</th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (heat of heats(); track heat.id) {
+      <tr>
+        <td>
+          <button type="button" (click)="picked.emit(heat.id)">{{ heat.name }}</button>
+        </td>
+        <td>{{ heat.startsAt | date: 'short' }}</td>
+        <td>{{ heat.registeredCount }} / {{ heat.capacity }}</td>
+      </tr>
+    }
+  </tbody>
+</table>

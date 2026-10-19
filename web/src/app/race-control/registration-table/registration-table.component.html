@@ -1,0 +1,26 @@
+<table>
+  <thead>
+    <tr>
+      <th>Driver</th>
+      <th>Team</th>
+      <th>Registered at</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    @for (registration of registrations(); track registration.id) {
+      <tr>
+        <td>{{ registration.driverName }}</td>
+        <td>{{ registration.teamName }}</td>
+        <td>{{ registration.createdAt | date: 'short' }}</td>
+        <td>
+          <button type="button" (click)="simulate.emit(registration)">Simulate run</button>
+        </td>
+      </tr>
+    } @empty {
+      <tr>
+        <td colspan="4">No registrations yet.</td>
+      </tr>
+    }
+  </tbody>
+</table>

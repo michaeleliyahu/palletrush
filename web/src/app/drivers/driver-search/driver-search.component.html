@@ -1,0 +1,18 @@
+<label>
+  Search
+  <input
+    #searchInput
+    type="search"
+    data-testid="driver-search-input"
+    [value]="query()"
+    (input)="query.set(searchInput.value)"
+  />
+</label>
+
+<ul data-testid="driver-search-results">
+  @for (driver of results(); track driver.id) {
+    <li data-testid="driver-search-result">
+      {{ driver.name }} ({{ driver.teamName }}, {{ driver.licenseNo }})
+    </li>
+  }
+</ul>

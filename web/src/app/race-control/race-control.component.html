@@ -1,0 +1,20 @@
+<h2>Race control</h2>
+<app-heat-table [heats]="heats()" (picked)="pick($event)" />
+
+@if (selectedHeat(); as shown) {
+  <h3>{{ heatName() }} registrations</h3>
+  <p><a [routerLink]="['/leaderboard', shown.heatId]">Leaderboard</a></p>
+  <app-registration-table
+    [registrations]="shown.registrations"
+    (simulate)="simulate(shown.heatId, $event)"
+  />
+  <app-register-form
+    [teams]="teams()"
+    [heatId]="shown.heatId"
+    (register)="register(shown.heatId, $event)"
+  />
+}
+
+@if (message()) {
+  <p>{{ message() }}</p>
+}

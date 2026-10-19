@@ -1,0 +1,8 @@
+<h3>On course</h3>
+<ul>
+  @for (driver of drivers(); track driver.runId) {
+    <li>{{ driver.driverName }} ({{ driver.teamName }}), Heat {{ driver.heatId }}</li>
+  } @empty {
+    <li>No drivers on course.</li>
+  }
+</ul>
