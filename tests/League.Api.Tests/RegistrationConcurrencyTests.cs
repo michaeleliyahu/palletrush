@@ -19,7 +19,7 @@ public class RegistrationConcurrencyTests
         var heat = await client.GetFromJsonAsync<HeatSummary>($"/api/heats/{HeatId}");
         Assert.That(heat!.Capacity - heat.RegisteredCount, Is.EqualTo(1), "heat should have exactly one free slot");
 
-        var driverIds = await PickDriversNotInHeatAsync(Requests);
+        var driverIds = await PickDriversNotInHeatAsync(HeatId, Requests);
 
         var url = $"/api/heats/{HeatId}/registrations";
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -40,12 +40,44 @@ public class RegistrationConcurrencyTests
         }
     }
 
-    private static async Task<List<int>> PickDriversNotInHeatAsync(int count)
+    [Test]
+    public async Task Simultaneous_registrations_fill_every_free_slot()
+    {
+        const int heatId = 8;
+        using var client = TestEnvironment.Factory.CreateClient();
+        var heat = await client.GetFromJsonAsync<HeatSummary>($"/api/heats/{heatId}");
+        var freeSlots = heat!.Capacity - heat.RegisteredCount;
+        Assert.That(freeSlots, Is.GreaterThan(1), "heat should have several free slots");
+
+        var driverIds = await PickDriversNotInHeatAsync(heatId, Requests);
+
+        var url = $"/api/heats/{heatId}/registrations";
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var posts = driverIds.Select(async id =>
+        {
+            await gate.Task;
+            return await client.PostAsJsonAsync(url, new { driverId = id });
+        }).ToList();
+        gate.SetResult();
+        var responses = await Task.WhenAll(posts);
+
+        var after = await client.GetFromJsonAsync<HeatSummary>($"/api/heats/{heatId}");
+        var registrations = await client.GetFromJsonAsync<List<RegistrationEntry>>(url);
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(responses.Count(r => r.StatusCode == HttpStatusCode.Created), Is.EqualTo(freeSlots));
+            Assert.That(responses.Count(r => r.StatusCode == HttpStatusCode.Conflict), Is.EqualTo(Requests - freeSlots));
+            Assert.That(after!.RegisteredCount, Is.EqualTo(after.Capacity));
+            Assert.That(registrations, Has.Count.EqualTo(after.Capacity));
+        }
+    }
+
+    private static async Task<List<int>> PickDriversNotInHeatAsync(int heatId, int count)
     {
         using var scope = TestEnvironment.Factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<LeagueDbContext>();
         return await db.Drivers
-            .Where(d => d.Team.Active && !db.Registrations.Any(r => r.HeatId == HeatId && r.DriverId == d.Id))
+            .Where(d => d.Team.Active && !db.Registrations.Any(r => r.HeatId == heatId && r.DriverId == d.Id))
             .OrderBy(d => d.Id)
             .Select(d => d.Id)
             .Take(count)
