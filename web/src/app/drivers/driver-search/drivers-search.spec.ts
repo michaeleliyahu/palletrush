@@ -84,4 +84,17 @@ describe('DriverSearchComponent', () => {
       ana.map((driver) => expect.stringContaining(driver.name)),
     );
   });
+
+  it('cancels the in-flight search when the component is destroyed', async () => {
+    const fixture = TestBed.createComponent(DriverSearchComponent);
+    const http = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+
+    await type(fixture, 'ana');
+    const req = http.expectOne((r) => r.params.get('search') === 'ana');
+
+    fixture.destroy();
+
+    expect(req.cancelled).toBe(true);
+  });
 });
