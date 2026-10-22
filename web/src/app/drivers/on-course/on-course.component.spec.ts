@@ -48,4 +48,21 @@ describe('OnCourseComponent', () => {
     http.expectNone('/api/drivers/on-course');
     http.verify();
   });
+
+  it('keeps polling after a failed request', async () => {
+    const fixture = TestBed.createComponent(OnCourseComponent);
+    const http = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+
+    await vi.advanceTimersByTimeAsync(0);
+    http
+      .expectOne('/api/drivers/on-course')
+      .flush(null, { status: 503, statusText: 'Service Unavailable' });
+    await vi.advanceTimersByTimeAsync(2000);
+
+    http.expectOne('/api/drivers/on-course').flush(onCourse);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fixture.componentInstance.drivers()).toEqual(onCourse);
+    fixture.destroy();
+  });
 });

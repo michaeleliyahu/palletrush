@@ -1,4 +1,6 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { catchError, EMPTY, exhaustMap, timer } from 'rxjs';
 import { DriversService, OnCourseDriver } from '../../api/drivers.service';
 
 @Component({
@@ -9,12 +11,10 @@ import { DriversService, OnCourseDriver } from '../../api/drivers.service';
 export class OnCourseComponent {
   private readonly driversService = inject(DriversService);
 
-  readonly drivers = signal<OnCourseDriver[]>([]);
-
-  constructor() {
-    setInterval(
-      () => this.driversService.getOnCourse().subscribe((r) => this.drivers.set(r)),
-      2000,
-    );
-  }
+  readonly drivers = toSignal(
+    timer(0, 2000).pipe(
+      exhaustMap(() => this.driversService.getOnCourse().pipe(catchError(() => EMPTY))),
+    ),
+    { initialValue: [] as OnCourseDriver[] },
+  );
 }
