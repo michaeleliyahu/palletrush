@@ -24,13 +24,19 @@ public class RegistrationService(LeagueDbContext db)
 
     public async Task<RegistrationResult> RegisterAsync(int heatId, int driverId, CancellationToken ct)
     {
-        var heat = await db.Heats.FindAsync([heatId], ct);
-        if (heat is null)
-            return RegistrationResult.HeatNotFound;
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
 
-        if (heat.RegisteredCount >= heat.Capacity)
-            return RegistrationResult.HeatFull;
+        // Claim a slot atomically: concurrent requests (on any replica) queue on the heat's row lock
+        // and re-check the capacity condition against the committed count.
+        var claimed = await db.Heats
+            .Where(h => h.Id == heatId && h.RegisteredCount < h.Capacity)
+            .ExecuteUpdateAsync(s => s.SetProperty(h => h.RegisteredCount, h => h.RegisteredCount + 1), ct);
+        if (claimed == 0)
+            return await db.Heats.AnyAsync(h => h.Id == heatId, ct)
+                ? RegistrationResult.HeatFull
+                : RegistrationResult.HeatNotFound;
 
+        // Returning without commit rolls the claim back.
         var eligible = await db.Drivers.AnyAsync(d => d.Id == driverId && d.Team.Active, ct);
         if (!eligible)
             return RegistrationResult.DriverNotEligible;
@@ -41,8 +47,8 @@ public class RegistrationService(LeagueDbContext db)
             DriverId = driverId,
             CreatedAt = DateTimeOffset.UtcNow,
         });
-        heat.RegisteredCount++;
         await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
 
         return RegistrationResult.Registered;
     }
